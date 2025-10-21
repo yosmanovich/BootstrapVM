@@ -7,7 +7,7 @@
 .EXAMPLE
     ./Bootstrap.ps1
 #>
-
+Start-Transcript -Path transcript.log
 # Check if running as administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 
@@ -19,13 +19,23 @@ if (-not $isAdmin) {
     Start-Process PowerShell -Verb RunAs -ArgumentList $arguments
     exit
 }
-Import-Module ".\Modules\WSL.psm1" -Force
-Import-Module ".\Modules\Git.psm1" -Force
-Import-Module ".\Modules\Docker.psm1" -Force
-Import-Module ".\Modules\VSCode.psm1" -Force
+Import-Module ".\WSL.psm1" -Force
+Import-Module ".\Git.psm1" -Force
+Import-Module ".\Docker.psm1" -Force
+Import-Module ".\VSCode.psm1" -Force
 
 $test = Test-WSL
-if ($test -eq $false) { Install-WSL }
+if ($test -eq $false) 
+{ 
+    $result = Install-WSL 
+    if ($result.NeedsReboot -eq $true) 
+    {
+        Write-Host "Reboot is required. Please reboot and re-run the script." -ForegroundColor Red
+        Stop-Transcript
+        Restart-Computer -Force
+        exit
+    }   
+}
 else { Write-Host "WSL already installed" }
 
 $test = Test-WSLUbuntuInstalled 
@@ -48,9 +58,11 @@ $test = Test-VSCodeInstalled
 if ($test -eq $false) { Install-VSCode }
 else { Write-Host "VS Code already installed" }
 
-Configure-WSL 
-Configure-Docker 
+Set-WSLConfiguration
+Set-DockerConfiguration 
 
 if ($(Test-WSL) -and $(Test-WSLUbuntuInstalled) -and  $(Test-GitInstalled) -and $(Test-GCMWInstalled) -and $(Test-DockerInstalled) -and  $(Test-VSCodeInstalled))
 { Write-Host "Components are all installed" }
 else { Write-Host "Re-run script, components failed to install" }
+Stop-Transcript
+Restart-Computer

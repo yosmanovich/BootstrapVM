@@ -1,0 +1,6 @@
+{
+  "Environment": "AzureCloud",
+  "Location": "East US2",
+  "ResourceGroupName": "SupportResourceGroup",
+  "VirtualMachineName": "SupportVM01"  
+}

@@ -39,15 +39,24 @@ function Install-WSL
             $needsReboot = $true
         } catch {
             Write-Error "Failed to enable ${feature}: $($_.Exception.Message)"
-            return $false
+            return @{
+                "Success"=$false 
+                "NeedsReboot"=$needsReboot 
+            }
         }
     }
     if ($needsReboot) {
         Write-Host "Windows features have been enabled. A reboot is required." -ForegroundColor Yellow
         Write-Host "Please reboot your system and run this script again." -ForegroundColor Red
-        return $false
+        return @{
+                "Success"=$false 
+                "NeedsReboot"=$needsReboot 
+        }
     }
-    return $true
+    return @{
+        "Success"=$true 
+        "NeedsReboot"=$needsReboot 
+    }
 }
 
 function Update-WSL 
@@ -65,6 +74,7 @@ function Update-WSL
     if ($versionSuccess) {
         Write-Host "Ubuntu 22.04 installed successfully!" -ForegroundColor Green
     } else {
+        
         Write-Warning "Failed to install Ubuntu 22.04"
         return $false
     }
@@ -93,8 +103,7 @@ function Invoke-WSLCommand
     Write-Host "Executing: $Command $($Arguments -join ' ')" -ForegroundColor Gray
     
     try {
-        $process = Start-Process -FilePath $Command -ArgumentList $Arguments -Wait -PassThru -NoNewWindow
-        
+        $process = Start-Process -FilePath $Command -ArgumentList $Arguments -Wait -PassThru -NoNewWindow 
         if ($process.ExitCode -eq 0) {
             Write-Host "$Description completed successfully!" -ForegroundColor Green
             return $true
@@ -103,12 +112,14 @@ function Invoke-WSLCommand
             return $false
         }
     } catch {
-        Write-Error "$Description failed: $($_.Exception.Message)"
+        # Enhanced error handling for common WSL issues
+        $errorMessage = $_.Exception.Message       
+        Write-Error "$Description failed: $errorMessage"        
         return $false
     }
 }
 
-function Configure-WSL 
+function Set-WSLConfiguration
 {
     param(
         [switch]$ReInitialize
@@ -163,8 +174,8 @@ function Configure-WSL
 
     $versionSuccess = Invoke-WSLCommand "wsl" @("-e", "bash", "-c", "`"mkdir /var/source`"") "Install jq"
 
-    $versionSuccess = Invoke-GitCommand "wsl" @("-e", "bash", "-c", "`"git config --global credential.helper '/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe'`"") "Configure Git Credential Manager"
-    $versionSuccess = Invoke-GitCommand "wsl" @("-e", "bash", "-c", "`"git config --global credential.useHttpPath true`"") "Configure Git HTTPS"
+    $versionSuccess = Invoke-WSLCommand "wsl" @("-e", "bash", "-c", "`"git config --global credential.helper '/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe'`"") "Configure Git Credential Manager"
+    $versionSuccess = Invoke-WSLCommand "wsl" @("-e", "bash", "-c", "`"git config --global credential.useHttpPath true`"") "Configure Git HTTPS"
 
     $versionSuccess = Invoke-WSLCommand "wsl" @("-e", "bash", "-c", "`"echo -e '=============================================================================\n\rRun the following commands to prepare your environment:\n\r1. Configure and pull the files from GitHub:\n\r   git config --global user.email <Your email>\n\r   git config --global user.name <Your Name>\n\r   git clone https://github.com/microsoft/Federal-Information-Assistant.git info-assist\n\r   cd info-assist\n\r   git fetch --tags\n\r\n\r2. Authenticate to Azure\n\r   Open a browser and login to your Azure subscription -> https://portal.azure.com\n\r\n\r3. Authenticate to Azure CLI\n\r   az login --user-device-code\n\r\n\r4. Configure the scripts/environments/local.env file\n\r\n\r5. Run make to deploy environment\n\r=============================================================================\n\r' > /etc/motd`"") "MOTD created" 
     $versionSuccess = Invoke-WSLCommand "wsl" @("-e", "bash", "-c", "`"echo -e '#!/bin/sh\n\ncat /etc/motd' > /etc/update-motd.d/99-system`"") "MOTD Startup created"
@@ -176,4 +187,4 @@ Export-ModuleMember -Function Test-WSL
 Export-ModuleMember -Function Test-WSLUbuntuInstalled
 Export-ModuleMember -Function Update-WSL
 Export-ModuleMember -Function Install-WSL
-Export-ModuleMember -Function Configure-WSL 
+Export-ModuleMember -Function Set-WSLConfiguration

@@ -247,7 +247,7 @@ function Install-Docker
     Start-Sleep -Seconds 10
 }
 
-function Configure-Docker 
+function Set-DockerConfiguration 
 {
     # Path to Docker Desktop settings file
     $settingsPath = "$env:APPDATA\Docker\settings-store.json"
@@ -255,9 +255,24 @@ function Configure-Docker
     # Read current settings
     $settings = Get-Content $settingsPath | ConvertFrom-Json
 
-    $settings.EnableIntegrationWithDefaultWslDistro = $false
-    # Enable WSL integration
-    $settings.IntegratedWslDistros = @("Ubuntu-22.04")
+    if ($null -ne ($settings | Get-Member -Name "EnableIntegrationWithDefaultWslDistro")) 
+    {
+        $settings.EnableIntegrationWithDefaultWslDistro = $true
+    }
+    else 
+    {
+        $settings | Add-Member -NotePropertyName EnableIntegrationWithDefaultWslDistro -NotePropertyValue $true
+    }
+        # Enable WSL integration
+    if ($null -ne ($settings | Get-Member -Name "IntegratedWslDistros")) 
+    {
+        $settings.IntegratedWslDistros = @("Ubuntu-22.04")
+    }
+    else 
+    {
+        $settings | Add-Member -NotePropertyName IntegratedWslDistros -NotePropertyValue @("Ubuntu-22.04")
+    }
+
     # Write back to file
     $settings | ConvertTo-Json -Depth 10 | Set-Content $settingsPath
 
@@ -268,4 +283,4 @@ function Configure-Docker
 
 Export-ModuleMember -Function Test-DockerInstalled
 Export-ModuleMember -Function Install-Docker
-Export-ModuleMember -Function Configure-Docker 
+Export-ModuleMember -Function Set-DockerConfiguration 

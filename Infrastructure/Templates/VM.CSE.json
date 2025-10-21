@@ -1,0 +1,33 @@
+{
+    "apiVersion": "2018-06-01",
+    "type": "Microsoft.Compute/virtualMachines/extensions",
+    "name": "virtualMachineName/config-app",
+    "location": "[resourceGroup().location]",
+    "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'),copyindex())]",
+        "[variables('musicstoresqlName')]"
+    ],
+    "tags": {
+        "displayName": "config-app"
+    },
+    "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.10",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+            "timestamp":123456789
+        },
+        "protectedSettings": {
+            "commandToExecute": "powershell.exe Bootstrap.ps1",
+            "managedIdentity" : {},
+            "fileUris": [
+                "https://github.com/yosmanovich/BootstrapVM/releases/download/initial/Bootstrap.ps1",
+                "https://github.com/yosmanovich/BootstrapVM/releases/download/initial/Docker.psm1",
+                "https://github.com/yosmanovich/BootstrapVM/releases/download/initial/Git.psm1",
+                "https://github.com/yosmanovich/BootstrapVM/releases/download/initial/VSCode.psm1",
+                "https://github.com/yosmanovich/BootstrapVM/releases/download/initial/WSL.psm1"
+            ]
+        }
+    }
+}
