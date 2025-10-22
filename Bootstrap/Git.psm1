@@ -39,7 +39,8 @@
                 $_.DisplayName -like "*Git*" -and 
                 $_.DisplayName -notlike "*GitHub*" -and
                 $_.DisplayName -notlike "*GitKraken*" -and
-                $_.DisplayName -notlike "*SourceTree*"
+                $_.DisplayName -notlike "*SourceTree*" -and
+                $_.DisplayName -notlike "*Credential*"
             }
             
             if ($gitInstall) {
