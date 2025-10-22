@@ -61,6 +61,15 @@ function Install-WSL
 
 function Update-WSL 
 {
+    Write-Host "Update WSL"     
+    $versionSuccess = Invoke-WSLCommand "wsl" @("--update") "Update WSL"
+    if ($versionSuccess) {
+        Write-Host "WSL updated successfully!" -ForegroundColor Green
+    } else {
+        Write-Warning "Failed to update WSL"
+        return $false
+    }
+
     Write-Host "Download Ubuntu-22.04"     
     $versionSuccess = Invoke-WSLCommand "wsl" @("--install", "-d", "Ubuntu-22.04", "--no-launch") "WSL download Ubuntu-22.04"
     if ($versionSuccess) {

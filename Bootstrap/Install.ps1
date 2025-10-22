@@ -23,7 +23,7 @@ $Script= "C:\Bootstrap\Bootstrap.ps1"
 $ShortcutName = "BootstrapVM Launcher"
 
 # Get the desktop path
-$DesktopPath = "C:\Users\admInfoAssist\Desktop"
+$DesktopPath = [Environment]::GetFolderPath('CommonDesktopDirectory')
 
 # Create the shortcut
 $WScriptShell = New-Object -ComObject WScript.Shell
@@ -32,7 +32,7 @@ $Shortcut = $WScriptShell.CreateShortcut($ShortcutPath)
 
 # Set shortcut properties
 $Shortcut.TargetPath = "powershell"
-$Shortcut.Arguments = $TargetPath
+$Shortcut.Arguments = $Script
 $Shortcut.WorkingDirectory = Split-Path $Script
 $Shortcut.Save()
 
