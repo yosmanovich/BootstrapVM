@@ -1,14 +1,58 @@
 ﻿function Test-GitInstalled
 {
     try {
+        # Test if git command is available
         $gitVersion = git --version 2>$null
-        if ($gitVersion) {
+        if ($gitVersion -and $LASTEXITCODE -eq 0) {
+            Write-Host "Git found: $gitVersion" -ForegroundColor Green
             return $true
         }
     } catch {
-    
+        # Git command not found or failed
     }
-    return $true
+    
+    # Check if git.exe exists in common paths
+    $commonGitPaths = @(
+        "${env:ProgramFiles}\Git\cmd\git.exe",
+        "${env:ProgramFiles(x86)}\Git\cmd\git.exe",
+        "${env:LOCALAPPDATA}\Programs\Git\cmd\git.exe"
+    )
+    
+    foreach ($path in $commonGitPaths) {
+        if (Test-Path $path) {
+            Write-Host "Git executable found at: $path" -ForegroundColor Green
+            return $true
+        }
+    }
+    
+    # Check registry for Git installation
+    $registryPaths = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*"
+    )
+    
+    foreach ($regPath in $registryPaths) {
+        try {
+            $programs = Get-ItemProperty $regPath -ErrorAction SilentlyContinue
+            $gitInstall = $programs | Where-Object { 
+                $_.DisplayName -like "*Git*" -and 
+                $_.DisplayName -notlike "*GitHub*" -and
+                $_.DisplayName -notlike "*GitKraken*" -and
+                $_.DisplayName -notlike "*SourceTree*"
+            }
+            
+            if ($gitInstall) {
+                Write-Host "Git installation found in registry: $($gitInstall.DisplayName)" -ForegroundColor Green
+                return $true
+            }
+        } catch {
+            # Continue checking other registry paths
+        }
+    }
+    
+    Write-Host "Git is not installed" -ForegroundColor Red
+    return $false
 }
 function Test-GCMWInstalled 
 {
