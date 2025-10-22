@@ -78,19 +78,29 @@ $protectedSettings = @{
     )
     managedIdentity = @{}
 }
-# Convert to JSON and escape for PowerShell
-$protectedSettingsJson = ($protectedSettings | ConvertTo-Json -Compress).Replace('"', '\"')
+# Convert to JSON without escaping - Azure CLI handles JSON parsing
+$protectedSettingsJson = $protectedSettings | ConvertTo-Json -Compress
+$settingsJson = $settings | ConvertTo-Json -Compress
 
-$settings = @{
-    timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+# Write JSON to temporary files to avoid command line escaping issues
+$settingsFile = [System.IO.Path]::GetTempFileName()
+$protectedSettingsFile = [System.IO.Path]::GetTempFileName()
+
+$settingsJson | Out-File -FilePath $settingsFile -Encoding utf8 -NoNewline
+$protectedSettingsJson | Out-File -FilePath $protectedSettingsFile -Encoding utf8 -NoNewline
+
+try {
+    az vm extension set `
+        --resource-group $($EnvironmentSettings.ResourceGroupName) `
+        --vm-name $($EnvironmentSettings.VirtualMachineName) `
+        --name "CustomScriptExtension" `
+        --publisher "Microsoft.Compute" `
+        --version "1.10" `
+        --settings "@$settingsFile" `
+        --protected-settings "@$protectedSettingsFile"
 }
-$settingsJson = ($settings | ConvertTo-Json -Compress).Replace('"', '\"')
-
-az vm extension set `
-    --resource-group $($EnvironmentSettings.ResourceGroupName) `
-    --vm-name $($EnvironmentSettings.VirtualMachineName) `
-    --name "CustomScriptExtension" `
-    --publisher "Microsoft.Compute" `
-    --version "1.10" `
-    --settings "`"$settingsJson`"" `
-    --protected-settings "`"$protectedSettingsJson`""
+finally {
+    # Clean up temporary files
+    Remove-Item $settingsFile -ErrorAction SilentlyContinue
+    Remove-Item $protectedSettingsFile -ErrorAction SilentlyContinue
+}
