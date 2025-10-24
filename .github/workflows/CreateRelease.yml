@@ -4,11 +4,11 @@ name: Create Release of BootStrap Files
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
+  # Triggers the workflow on push events when Bootstrap folder files change
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    paths:
+      - 'Bootstrap/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch: 
@@ -21,16 +21,16 @@ on:
         description: 'Release name'
         required: true
         default: 'Bootstrap VM Release'
-      directory:
-        description: 'Directory to include in release'
-        required: true
-        default: 'Bootstrap'
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    
+    # Permissions needed for creating releases
+    permissions:
+      contents: write
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -42,14 +42,14 @@ jobs:
         id: vars
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-            echo "release_name=Bootstrap VM ${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-            echo "directory=Bootstrap" >> $GITHUB_OUTPUT
+            # Generate tag name based on timestamp for automatic releases
+            echo "tag_name=v$(date +%Y.%m.%d.%H%M%S)" >> $GITHUB_OUTPUT
+            echo "release_name=Bootstrap VM $(date +%Y.%m.%d.%H%M%S)" >> $GITHUB_OUTPUT
           else
             echo "tag_name=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
             echo "release_name=${{ github.event.inputs.release_name }}" >> $GITHUB_OUTPUT
-            echo "directory=${{ github.event.inputs.directory }}" >> $GITHUB_OUTPUT
           fi
+          echo "directory=Bootstrap" >> $GITHUB_OUTPUT
         
       - name: Verify directory exists
         run: |
@@ -94,50 +94,15 @@ jobs:
           
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.vars.outputs.tag_name }}
-          release_name: ${{ steps.vars.outputs.release_name }}
+          name: ${{ steps.vars.outputs.release_name }}
           body_path: release_notes.md
           draft: false
           prerelease: false
-          
-      - name: Upload ZIP archive
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.vars.outputs.directory }}.zip
-          asset_name: ${{ steps.vars.outputs.directory }}.zip
-          asset_content_type: application/zip
-          
-      - name: Upload TAR.GZ archive
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ steps.vars.outputs.directory }}.tar.gz
-          asset_name: ${{ steps.vars.outputs.directory }}.tar.gz
-          asset_content_type: application/gzip
-          
-      - name: Upload individual files
-        run: |
-          upload_url="${{ steps.create_release.outputs.upload_url }}"
-          
-          find "${{ steps.vars.outputs.directory }}" -type f | while read file; do
-            filename=$(basename "$file")
-            filepath="$file"
-            
-            echo "Uploading $filename..."
-            
-            curl \
-              -X POST \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary @"$filepath" \
-              "${upload_url%{?name,label\}}?name=$filename"
-          done
+          files: |
+            ${{ steps.vars.outputs.directory }}.zip
+            ${{ steps.vars.outputs.directory }}.tar.gz
+            Bootstrap/*.ps1
+            Bootstrap/*.psm1
